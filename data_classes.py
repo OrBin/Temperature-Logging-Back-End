@@ -62,6 +62,16 @@ class Logger(LoggerLogBase):
         log.save()
         return log
 
+    @staticmethod
+    def get_displayed(all_loggers=None):
+        if not all_loggers:
+            all_loggers = Logger.get_all()
+
+        displayed_loggers = [logger for logger in all_loggers.values() if logger.is_displayed]
+        displayed_loggers = sorted(displayed_loggers, key=lambda logger: logger.display_name)
+
+        return displayed_loggers
+
     def search_logs(self):
         """
         Returns the search for this logger's logs.
@@ -91,7 +101,7 @@ class Logger(LoggerLogBase):
         self.logger_log = {'name': 'logger'}
         return super().save(using, index, validate, **kwargs)
 
-    def to_dict(self):
+    def serialize_to_dict(self):
         return {
             'id': self.meta.id,
             'name': self.name,
