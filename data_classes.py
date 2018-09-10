@@ -91,6 +91,13 @@ class Logger(LoggerLogBase):
         self.logger_log = {'name': 'logger'}
         return super().save(using, index, validate, **kwargs)
 
+    def to_dict(self):
+        return {
+            'id': self.meta.id,
+            'name': self.name,
+            'display_name': self.display_name,
+            'is_displayed': self.is_displayed,
+        }
 
 class Log(LoggerLogBase):
     """

@@ -64,7 +64,9 @@ def add_log():
 
 @app.route('/logger', methods=['GET'])
 def get_loggers():
-    abort(501) # Not implemented
+    displayed_only = request.args.get('displayed_only') == 'true'
+    loggers_list_to_iterate = displayed_loggers if displayed_only else loggers.values()
+    return jsonify([logger.to_dict() for logger in loggers_list_to_iterate])
 
 
 @app.route('/logger', methods=['POST'])
@@ -72,13 +74,16 @@ def add_logger():
     abort(501) # Not implemented
 
 
-@app.route('/logger/:loggerId', methods=['GET'])
-def get_logger():
-    abort(501) # Not implemented
+@app.route('/logger/<string:logger_id>', methods=['GET'])
+def get_logger(logger_id):
+    if logger_id in loggers:
+        return jsonify(loggers[logger_id].to_dict())
+    else:
+        abort(404) # Not found
 
 
-@app.route('/logger/:loggerId', methods=['PUT'])
-def update_logger():
+@app.route('/logger/<string:logger_id>', methods=['PUT'])
+def update_logger(logger_id):
     abort(501) # Not implemented
 
 
