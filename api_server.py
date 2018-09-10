@@ -24,7 +24,7 @@ displayed_loggers = sorted(displayed_loggers, key=lambda logger: logger.display_
 
 
 @app.route('/latest', methods=['GET'])
-def get_latest():
+def get_latest_logs():
     """
     Returns the latest log data, as well as the logger's name, for each displayed logger
     """
@@ -46,12 +46,12 @@ def get_latest():
 
 
 @app.route('/log', methods=['GET'])
-def get_log():
+def get_logs():
     abort(501) # Not implemented
 
 
 @app.route('/log', methods=['POST'])
-def post_log():
+def add_log():
     req_body = request.get_json()
     new_log = loggers[req_body['logger']].add_log(
         timestamp=datetime.now(),
@@ -63,12 +63,22 @@ def post_log():
 
 
 @app.route('/logger', methods=['GET'])
-def get_logger():
+def get_loggers():
     abort(501) # Not implemented
 
 
 @app.route('/logger', methods=['POST'])
-def post_logger():
+def add_logger():
+    abort(501) # Not implemented
+
+
+@app.route('/logger/:loggerId', methods=['GET'])
+def get_logger():
+    abort(501) # Not implemented
+
+
+@app.route('/logger/:loggerId', methods=['PUT'])
+def update_logger():
     abort(501) # Not implemented
 
 
