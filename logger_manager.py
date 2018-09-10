@@ -9,3 +9,7 @@ class LoggerManager:
     def initialize():
         LoggerManager.all_loggers = Logger.get_all()
         LoggerManager.displayed_loggers = Logger.get_displayed(LoggerManager.all_loggers)
+
+    @staticmethod
+    def refresh_displayed_loggers():
+        LoggerManager.displayed_loggers = Logger.get_displayed(LoggerManager.all_loggers)

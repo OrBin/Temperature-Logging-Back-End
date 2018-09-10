@@ -78,7 +78,6 @@ def get_loggers():
 
 @app.route('/logger', methods=['POST'], strict_slashes=False)
 def add_logger():
-
     req_body = request.get_json()
 
     new_logger = Logger(
@@ -101,8 +100,26 @@ def get_logger(logger_id):
 
 @app.route('/logger/<string:logger_id>', methods=['PUT'], strict_slashes=False)
 def update_logger(logger_id):
-    # TODO: Implement
-    abort(501) # Not implemented
+    req_body = request.get_json()
+
+    if logger_id in LoggerManager.all_loggers:
+        logger_to_update = LoggerManager.all_loggers[logger_id]
+    else:
+        abort(404) # Not found
+
+    if 'name' in req_body:
+        logger_to_update.name = req_body['name']
+
+    if 'display_name' in req_body:
+        logger_to_update.display_name = req_body['display_name']
+
+    if 'is_displayed' in req_body:
+        logger_to_update.is_displayed = req_body['is_displayed']
+        LoggerManager.refresh_displayed_loggers()
+
+    logger_to_update.save()
+
+    return jsonify(logger_to_update.serialize_to_dict())
 
 
 if __name__ == '__main__':
