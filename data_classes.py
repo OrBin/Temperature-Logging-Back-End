@@ -30,6 +30,22 @@ class Logger(LoggerLogBase):
         """
         return cls._index.search(**kwargs).filter('term', logger_log='logger')
 
+    @staticmethod
+    def get_all():
+        loggers = []
+        loggers_search = Logger.search()
+
+        for logger_result in loggers_search.execute():
+            logger_object = Logger(
+                name=logger_result.name,
+                display_name = logger_result.display_name,
+                is_displayed = logger_result.is_displayed,
+                meta={'id': logger_result.meta.id}
+            )
+            loggers.append(logger_object)
+
+        return loggers
+
     def add_log(self, timestamp, heat_index_celsius, humidity, temperature_celsius):
         """
         Save a new log which was logged by this logger.

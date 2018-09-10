@@ -4,7 +4,7 @@ This module serves the API for the temperature logging system's back-end.
 
 import json
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, abort
 from elasticsearch_dsl.connections import connections
 from elasticsearch_dsl import Q
 
@@ -18,25 +18,23 @@ app = Flask(__name__)
 app.config['DEBUG'] = config['debug']
 client = connections.create_connection(hosts=[config['db_host']])
 
+loggers = Logger.get_all()
+displayed_loggers = [logger for logger in loggers if logger.is_displayed]
+displayed_loggers = sorted(displayed_loggers, key=lambda logger: logger.display_name)
+
 
 @app.route('/latest', methods=['GET'])
 def get_latest():
     """
     Returns the latest log data, as well as the logger's name, for each displayed logger
     """
-    search = Logger.search()\
-                    .query('bool', must=[], filter=[Q('term', is_displayed=True)])
-    print(str(search.to_dict()).replace('\'', '"'))
 
-    loggers_results = search.execute()
-
-    loggers = []
-    for logger in loggers_results:
-        logger_object = Logger(meta={'id': logger.meta.id})
-        latest_log_search_results = logger_object.search_latest_log().execute()
+    latest_logs = []
+    for logger in displayed_loggers:
+        latest_log_search_results = logger.search_latest_log().execute()
         latest_log = latest_log_search_results.aggregations.latest_log.hits[0]
 
-        loggers.append({
+        latest_logs.append({
             'logger_display_name': logger.display_name,
             'updatedAt': latest_log.timestamp,
             'humidity': latest_log.humidity,
@@ -44,7 +42,27 @@ def get_latest():
             'temperature_celsius': latest_log.temperature_celsius,
         })
 
-    return jsonify(loggers)
+    return jsonify(latest_logs)
+
+
+@app.route('/log', methods=['GET'])
+def get_log():
+    abort(501) # Not implemented
+
+
+@app.route('/log', methods=['POST'])
+def post_log():
+    abort(501) # Not implemented
+
+
+@app.route('/logger', methods=['GET'])
+def get_logger():
+    abort(501) # Not implemented
+
+
+@app.route('/logger', methods=['POST'])
+def post_logger():
+    abort(501) # Not implemented
 
 
 if __name__ == '__main__':
