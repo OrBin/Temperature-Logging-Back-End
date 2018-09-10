@@ -32,7 +32,7 @@ class Logger(LoggerLogBase):
 
     @staticmethod
     def get_all():
-        loggers = []
+        loggers = {}
         loggers_search = Logger.search()
 
         for logger_result in loggers_search.execute():
@@ -42,7 +42,7 @@ class Logger(LoggerLogBase):
                 is_displayed = logger_result.is_displayed,
                 meta={'id': logger_result.meta.id}
             )
-            loggers.append(logger_object)
+            loggers[logger_result.meta.id] = logger_object
 
         return loggers
 
@@ -52,7 +52,6 @@ class Logger(LoggerLogBase):
         """
         log = Log(
             _routing=self.meta.id,
-            _index=self.meta.index,
             logger_log={'name': 'log', 'parent': self.meta.id},
             timestamp=timestamp,
             heat_index_celsius=heat_index_celsius,

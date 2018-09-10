@@ -4,9 +4,9 @@ This module serves the API for the temperature logging system's back-end.
 
 import json
 import os
-from flask import Flask, jsonify, abort
+from datetime import datetime
+from flask import Flask, jsonify, abort, request
 from elasticsearch_dsl.connections import connections
-from elasticsearch_dsl import Q
 
 from data_classes import Logger
 
@@ -19,7 +19,7 @@ app.config['DEBUG'] = config['debug']
 client = connections.create_connection(hosts=[config['db_host']])
 
 loggers = Logger.get_all()
-displayed_loggers = [logger for logger in loggers if logger.is_displayed]
+displayed_loggers = [logger for logger in loggers.values() if logger.is_displayed]
 displayed_loggers = sorted(displayed_loggers, key=lambda logger: logger.display_name)
 
 
@@ -52,7 +52,14 @@ def get_log():
 
 @app.route('/log', methods=['POST'])
 def post_log():
-    abort(501) # Not implemented
+    req_body = request.get_json()
+    new_log = loggers[req_body['logger']].add_log(
+        timestamp=datetime.now(),
+        heat_index_celsius=req_body['heat_index_celsius'],
+        humidity=req_body['humidity'],
+        temperature_celsius=req_body['temperature_celsius']
+    )
+    return f'Added the logger with id: {new_log.meta.id}'
 
 
 @app.route('/logger', methods=['GET'])
