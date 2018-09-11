@@ -4,13 +4,18 @@ This module serves the API for the temperature logging system's back-end.
 
 import json
 import os
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from flask import Flask, jsonify, abort, request
 from elasticsearch_dsl.connections import connections
 
 from data_classes import Logger, Log
 from logger_manager import LoggerManager
 
+
+DEFAULT_RETURNED_LOG_PERIOD_MINUTES = 60
+MAX_RETURNED_LOG_PERIOD_MINUTES = 60*12
+MAX_RETURNED_LOG_COUNT = 100
 
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.json')) as config_file:
     config = json.loads(config_file.read())
@@ -42,27 +47,61 @@ def get_latest_logs():
     return jsonify(latest_logs)
 
 
-DEFAULT_RETURNED_LOG_COUNT = 10
-MAX_RETURNED_LOG_COUNT = 100
 @app.route('/log', methods=['GET'], strict_slashes=False)
 def get_logs():
     """
-    Returns the latest DEFAULT_RETURNED_LOG_COUNT logs, or the requested count (if not above MAX_RETURNED_LOG_COUNT).
-    If an argument 'count' is given and is above MAX_RETURNED_LOG_COUNT,
-    this function will return MAX_RETURNED_LOG_COUNT logs.
+    If no arguments 'period' or 'count' are given, returns the logs from the latest DEFAULT_RETURNED_LOG_PERIOD_MINUTES.
+
+    If an argument 'period' is given, returns the logs from the latest period as required.
+    The acceptable format for argument 'period' is an integer with one of the letters 's', 'm', 'h' or 'd',
+    for example: '90s', '15m', '24h', '7d'.
+    The maximum period is defined by MAX_RETURNED_LOG_PERIOD_MINUTES.
+
+    If no argument 'period' is given, but an argument 'count' is given, returns the latest logs by the requested count.
+    The acceptable format for argument 'count' is an integer.
+    The maximum count is defined by MAX_RETURNED_LOG_COUNT.
     """
-    try:
-        log_count = int(request.args.get('count'))
-        if log_count > MAX_RETURNED_LOG_COUNT:
-            log_count = MAX_RETURNED_LOG_COUNT
-    except:
-        log_count = DEFAULT_RETURNED_LOG_COUNT
 
-    search = Log.search() \
-                    .sort('-timestamp') \
-                    .params(size=log_count)
+    get_logs_by_count = False
+
+    if 'period' in request.args:
+        match = re.match('(\d+[smhd])', request.args.get('period'))
+        if match is None:
+            abort(400) # Bad request
+
+        logs_period = match.group(1)
+
+        # Checking that logs_period is not above MAX_RETURNED_LOG_PERIOD_MINUTES
+        TO_MINUTES = {
+            's': 1/60,
+            'm': 1,
+            'h': 60,
+            'd': 60*24
+        }
+        logs_period_minutes = int(logs_period[:-1]) * TO_MINUTES[logs_period[-1]]
+        if logs_period_minutes > MAX_RETURNED_LOG_PERIOD_MINUTES:
+            logs_period = f'{MAX_RETURNED_LOG_PERIOD_MINUTES}m'
+
+    elif 'count' in request.args:
+        get_logs_by_count = True
+        try:
+            logs_count = int(request.args.get('count'))
+            if logs_count > MAX_RETURNED_LOG_COUNT:
+                logs_count = MAX_RETURNED_LOG_COUNT
+        except ValueError:
+            # Raised when value for argument 'count' is not a number
+            abort(400) # Bad request
+    else:
+        logs_period = f'{DEFAULT_RETURNED_LOG_PERIOD_MINUTES}m'
+
+    search = Log.search().sort('-timestamp')
+
+    if get_logs_by_count:
+        search =  search.params(size=logs_count)
+    else:
+        search = search.filter('range', timestamp={'gte': f'now-{logs_period}', 'lte': 'now'})
+
     results = search.execute()
-
     logs = [log_hit_to_dict(hit) for hit in results]
     return jsonify(logs)
 
@@ -71,7 +110,7 @@ def get_logs():
 def add_log():
     req_body = request.get_json()
     new_log = LoggerManager.all_loggers[req_body['logger']].add_log(
-        timestamp=datetime.now(),
+        timestamp=datetime.now(tz=timezone.utc),
         heat_index_celsius=req_body['heat_index_celsius'],
         humidity=req_body['humidity'],
         temperature_celsius=req_body['temperature_celsius']
@@ -140,7 +179,7 @@ def update_logger(logger_id):
 def log_hit_to_dict(hit):
     return {
         'logger_id': hit.meta.routing,
-        'updatedAt': hit.timestamp,
+        'updatedAt': datetime.fromtimestamp(hit.timestamp.timestamp(), tz=timezone.utc),
         'humidity': hit.humidity,
         'heat_index_celsius': hit.heat_index_celsius,
         'temperature_celsius': hit.temperature_celsius,
