@@ -7,6 +7,7 @@ import os
 import re
 from datetime import datetime, timezone
 from flask import Flask, jsonify, abort, request
+from flask_cors import cross_origin
 from elasticsearch_dsl.connections import connections
 
 from data_classes import Logger, Log
@@ -28,6 +29,7 @@ LoggerManager.initialize()
 
 
 @app.route('/latest', methods=['GET'], strict_slashes=False)
+@cross_origin()
 def get_latest_logs():
     """
     Returns the latest log data, as well as the logger's name, for each displayed logger
@@ -48,6 +50,7 @@ def get_latest_logs():
 
 
 @app.route('/log', methods=['GET'], strict_slashes=False)
+@cross_origin()
 def get_logs():
     """
     If no arguments 'period' or 'count' are given, returns the logs from the latest DEFAULT_RETURNED_LOG_PERIOD_MINUTES.
