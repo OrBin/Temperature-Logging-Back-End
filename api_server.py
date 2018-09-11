@@ -8,7 +8,7 @@ from datetime import datetime
 from flask import Flask, jsonify, abort, request
 from elasticsearch_dsl.connections import connections
 
-from data_classes import Logger
+from data_classes import Logger, Log
 from logger_manager import LoggerManager
 
 
@@ -34,22 +34,37 @@ def get_latest_logs():
         hits = latest_log_search_results.aggregations.latest_log.hits
 
         if len(hits) > 0:
-            latest_log = hits[0]
-            latest_logs.append({
-                'logger_display_name': logger.display_name,
-                'updatedAt': latest_log.timestamp,
-                'humidity': latest_log.humidity,
-                'heat_index_celsius': latest_log.heat_index_celsius,
-                'temperature_celsius': latest_log.temperature_celsius,
-            })
+            latest_log_dict = log_hit_to_dict(hits[0])
+            del latest_log_dict['logger_id']
+            latest_log_dict['logger_display_name'] = logger.display_name
+            latest_logs.append(latest_log_dict)
 
     return jsonify(latest_logs)
 
 
+DEFAULT_RETURNED_LOG_COUNT = 10
+MAX_RETURNED_LOG_COUNT = 100
 @app.route('/log', methods=['GET'], strict_slashes=False)
 def get_logs():
-    # TODO: Implement
-    abort(501) # Not implemented
+    """
+    Returns the latest DEFAULT_RETURNED_LOG_COUNT logs, or the requested count (if not above MAX_RETURNED_LOG_COUNT).
+    If an argument 'count' is given and is above MAX_RETURNED_LOG_COUNT,
+    this function will return MAX_RETURNED_LOG_COUNT logs.
+    """
+    try:
+        log_count = int(request.args.get('count'))
+        if log_count > MAX_RETURNED_LOG_COUNT:
+            log_count = MAX_RETURNED_LOG_COUNT
+    except:
+        log_count = DEFAULT_RETURNED_LOG_COUNT
+
+    search = Log.search() \
+                    .sort('-timestamp') \
+                    .params(size=log_count)
+    results = search.execute()
+
+    logs = [log_hit_to_dict(hit) for hit in results]
+    return jsonify(logs)
 
 
 @app.route('/log', methods=['POST'], strict_slashes=False)
@@ -120,6 +135,16 @@ def update_logger(logger_id):
     logger_to_update.save()
 
     return jsonify(logger_to_update.serialize_to_dict())
+
+
+def log_hit_to_dict(hit):
+    return {
+        'logger_id': hit.meta.routing,
+        'updatedAt': hit.timestamp,
+        'humidity': hit.humidity,
+        'heat_index_celsius': hit.heat_index_celsius,
+        'temperature_celsius': hit.temperature_celsius,
+    }
 
 
 if __name__ == '__main__':
