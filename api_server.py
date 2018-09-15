@@ -5,7 +5,9 @@ This module serves the API for the temperature logging system's back-end.
 import json
 import os
 import re
-from datetime import datetime, timezone
+import elasticsearch.exceptions
+from time import sleep
+from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, abort, request
 from flask_cors import cross_origin
 from elasticsearch_dsl.connections import connections
@@ -17,6 +19,8 @@ from logger_manager import LoggerManager
 DEFAULT_RETURNED_LOG_PERIOD_MINUTES = 60
 MAX_RETURNED_LOG_PERIOD_MINUTES = 60*12
 MAX_RETURNED_LOG_COUNT = 100
+CONNECTION_RETRY_TIMEOUT_MINUTES = 5
+CONNECTION_RETRY_INTERVAL_SECONDS = 10
 
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.json')) as config_file:
     config = json.loads(config_file.read())
@@ -24,8 +28,18 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.json'
 app = Flask(__name__)
 app.config['DEBUG'] = config['debug']
 
-client = connections.create_connection(hosts=[config['db_host']])
-LoggerManager.initialize()
+started_connecting_time = datetime.now()
+
+while (datetime.now() - started_connecting_time) < timedelta(minutes=CONNECTION_RETRY_TIMEOUT_MINUTES):
+    try:
+        print('Connecting to database...')
+        client = connections.create_connection(hosts=[config['db_host']])
+        LoggerManager.initialize()
+        print('Connected successfully')
+        break
+    except (ConnectionRefusedError, elasticsearch.exceptions.ConnectionError):
+        print(f'Failed to connect to database, retrying in {CONNECTION_RETRY_INTERVAL_SECONDS} seconds')
+        sleep(CONNECTION_RETRY_INTERVAL_SECONDS)
 
 
 @app.route('/latest', methods=['GET'], strict_slashes=False)
