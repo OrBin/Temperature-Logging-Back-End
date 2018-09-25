@@ -12,16 +12,12 @@ class LoggerLogBase(Document):
 
     logger_log = Join(relations={'logger': 'log'})
 
-
     @classmethod
     def _matches(cls, hit):
         """
         Returns whether a hit matches this class or not.
         """
         return False
-
-    #def save(self, using=None, index=None, validate=True, **kwargs):
-    #    return super().save(using, index, validate, **kwargs)
 
     class Index:
         """

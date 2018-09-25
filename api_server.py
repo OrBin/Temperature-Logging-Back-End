@@ -49,18 +49,31 @@ def get_latest_logs():
     Returns the latest log data, as well as the logger's name, for each displayed logger
     """
 
+    search = Logger.search() \
+                    .query('match', is_displayed=True) \
+                    .params(size=0)
+
+    search.aggs.bucket('top-loggers', 'terms', field='_id') \
+                .bucket('to-logs', 'children', type='log') \
+                .metric('top-logs', 'top_hits', size=1, sort=[{ 'timestamp': 'desc' }])
+
+    results = search.execute()
+    logger_buckets = results.aggregations['top-loggers'].buckets
     latest_logs = []
-    for logger in LoggerManager.displayed_loggers:
-        latest_log_search_results = logger.search_latest_log().execute()
-        hits = latest_log_search_results.aggregations.latest_log.hits
+
+    for bucket in logger_buckets:
+        hits = bucket['to-logs']['top-logs'].hits
 
         if len(hits) > 0:
             latest_log_dict = log_hit_to_dict(hits[0])
-            del latest_log_dict['logger_id']
+            logger = LoggerManager.all_loggers[latest_log_dict['logger_id']]
             latest_log_dict['logger_display_name'] = logger.display_name
+            del latest_log_dict['logger_id']
             latest_logs.append(latest_log_dict)
 
+    latest_logs = sorted(latest_logs, key=lambda log: log['logger_display_name'])
     return jsonify(latest_logs)
+
 
 
 @app.route('/log', methods=['GET'], strict_slashes=False)

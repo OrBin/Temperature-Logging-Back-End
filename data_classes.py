@@ -38,8 +38,8 @@ class Logger(LoggerLogBase):
         for logger_result in loggers_search.execute():
             logger_object = Logger(
                 name=logger_result.name,
-                display_name = logger_result.display_name,
-                is_displayed = logger_result.is_displayed,
+                display_name=logger_result.display_name,
+                is_displayed=logger_result.is_displayed,
                 meta={'id': logger_result.meta.id}
             )
             loggers[logger_result.meta.id] = logger_object
