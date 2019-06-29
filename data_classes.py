@@ -46,7 +46,7 @@ class Logger(LoggerLogBase):
 
         return loggers
 
-    def add_log(self, timestamp, heat_index_celsius, humidity, temperature_celsius):
+    def add_log(self, timestamp, humidity, temperature_celsius):
         """
         Save a new log which was logged by this logger.
         """
@@ -54,7 +54,6 @@ class Logger(LoggerLogBase):
             _routing=self.meta.id,
             logger_log={'name': 'log', 'parent': self.meta.id},
             timestamp=timestamp,
-            heat_index_celsius=heat_index_celsius,
             humidity=humidity,
             temperature_celsius=temperature_celsius
         )
@@ -114,7 +113,6 @@ class Log(LoggerLogBase):
     A class to represent a single temperature measurement log.
     """
     timestamp = Date()
-    heat_index_celsius = Float()
     humidity = Float()
     temperature_celsius = Float()
 

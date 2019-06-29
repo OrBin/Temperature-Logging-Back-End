@@ -141,7 +141,6 @@ def add_log():
     req_body = request.get_json()
     new_log = LoggerManager.all_loggers[req_body['logger']].add_log(
         timestamp=datetime.now(tz=timezone.utc),
-        heat_index_celsius=req_body['heat_index_celsius'],
         humidity=req_body['humidity'],
         temperature_celsius=req_body['temperature_celsius']
     )
@@ -211,7 +210,6 @@ def log_hit_to_dict(hit):
         'logger_id': hit.meta.routing,
         'updatedAt': datetime.fromtimestamp(hit.timestamp.timestamp(), tz=timezone.utc),
         'humidity': hit.humidity,
-        'heat_index_celsius': hit.heat_index_celsius,
         'temperature_celsius': hit.temperature_celsius,
     }
 
